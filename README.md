@@ -9,6 +9,7 @@ LeetCode Coach is a template repository. You solve with the VS Code LeetCode ext
 ## Features
 
 - **Coaching loop**: resume progress, choose a route, give progressive hints, review code, and record outcomes.
+- **Daily planning**: use your active list and review queue to plan a session before picking a problem.
 - **VS Code submit flow**: use the LeetCode extension for Test and Submit while keeping plugin files out of Git.
 - **Per-problem notes**: each problem owns its metadata, reasoning, mistakes, review log, and archived solution.
 - **Progressive disclosure**: the coach starts from compact state instead of loading every note.
@@ -37,11 +38,11 @@ The coach should summarize your current progress, recommend a route, fetch the s
 ## Daily Workflow
 
 1. Start a Codex session and invoke `leetcode-coach`.
-2. Choose a route: active list, due review, Daily, or topic.
+2. Let the coach summarize today's plan: due reviews, new problems, and recommended route.
 3. Let the coach fetch metadata and initialize the local note.
 4. Solve in the VS Code LeetCode extension under `workspace/leetcode/`.
 5. Ask for hints, edge-case checks, complexity review, or code review when needed.
-6. After AC, tell the coach so it can archive the code, update notes, and schedule review.
+6. After AC, tell the coach so it can archive the code, update notes, schedule review, and finalize the session.
 
 ## Repository Structure
 

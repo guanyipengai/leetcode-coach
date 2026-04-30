@@ -122,7 +122,16 @@ Daily logs live in:
 study/sessions/YYYY-MM-DD.md
 ```
 
-The coach may append concise entries after a study session. Keep entries useful for future review: problems touched, result, key takeaway, and suggested next step.
+The coach may append concise `Log Entry` blocks during a study session. At session end, the helper should rewrite the file into structured sections:
+
+- `Goal`
+- `Progress Snapshot`
+- `Problems`
+- `Takeaways`
+- `Next Session`
+- `Raw Log`
+
+The `Raw Log` section must preserve incremental `Log Entry` content so no learning history is lost.
 
 ### Pattern Notes
 

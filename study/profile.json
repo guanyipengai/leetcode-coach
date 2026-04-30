@@ -1,10 +1,10 @@
 {
   "language": "python3",
   "communication_language": "zh-CN",
-  "active_list": "example",
+  "active_list": "hot100",
   "daily_target": {
-    "new_problems": 1,
-    "review_problems": 1
+    "new_problems": 2,
+    "review_problems": 2
   },
   "hint_policy": "progressive",
   "review_intervals_days": [1, 7, 30]

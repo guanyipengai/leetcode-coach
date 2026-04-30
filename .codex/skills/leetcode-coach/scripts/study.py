@@ -17,6 +17,9 @@ META_RE = re.compile(r"<!--\s*leetcode-meta\s*(\{.*?\})\s*-->", re.DOTALL)
 SLUG_RE = re.compile(r"`([a-z0-9][a-z0-9-]*)`")
 LC_HEADER_RE = re.compile(r"@lc\s+app=(?P<app>\S+)\s+id=(?P<id>\d+)\s+lang=(?P<lang>\S+)")
 LC_CODE_RE = re.compile(r"(?P<start>^[ \t#/-]*@lc code=start[^\n]*\n)(?P<code>.*?)(?P<end>^[ \t#/-]*@lc code=end[^\n]*\n?)", re.DOTALL | re.MULTILINE)
+LOG_ENTRY_RE = re.compile(r"(?ms)^## Log Entry\s*\n(?P<body>.*?)(?=^## Log Entry\s*\n|\Z)")
+RAW_LOG_HEADING_RE = re.compile(r"(?m)^## Raw Log\s*$")
+LOG_FIELD_RE = re.compile(r"^- (?P<key>Problems|Summary|Next): (?P<value>.*)$", re.MULTILINE)
 STATUSES = {"Todo", "Doing", "AC", "Review"}
 MASTERIES = {"new", "shaky", "ok", "solid"}
 PLUGIN_WORKSPACE = Path("workspace") / "leetcode"
@@ -41,6 +44,10 @@ def split_csv(value: Optional[str]) -> List[str]:
     if not value:
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def clean_lines(values: Iterable[str]) -> List[str]:
+    return [value.strip() for value in values if value and value.strip()]
 
 
 def is_workspace_root(path: Path) -> bool:
@@ -123,6 +130,10 @@ def all_problems(root: Path) -> List[Dict[str, Any]]:
     return sorted(items, key=lambda item: (item.get("id") is None, item.get("id") or 0, item.get("slug") or ""))
 
 
+def problem_index(root: Path) -> Dict[str, Dict[str, Any]]:
+    return {item.get("slug"): item for item in all_problems(root) if item.get("slug") and not item.get("_error")}
+
+
 def find_problem(root: Path, slug: str) -> Optional[Tuple[Path, Dict[str, Any]]]:
     for path in note_paths(root):
         meta = read_meta(path)
@@ -174,11 +185,64 @@ def due_problems(root: Path, as_of: Optional[str] = None) -> List[Dict[str, Any]
 
 
 def active_candidates(root: Path, active_list: str) -> List[Dict[str, Any]]:
-    problems = {item.get("slug"): item for item in all_problems(root) if not item.get("_error")}
+    problems = problem_index(root)
     slugs = list_slugs(root, active_list)
     if slugs:
         return [problems[slug] for slug in slugs if slug in problems]
     return [item for item in problems.values() if active_list in item.get("lists", [])]
+
+
+def compact_problem(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": item.get("id"),
+        "slug": item.get("slug"),
+        "title": item.get("title") or item.get("slug"),
+        "difficulty": item.get("difficulty"),
+        "status": item.get("status"),
+        "mastery": item.get("mastery"),
+        "next_review": item.get("next_review"),
+        "path": item.get("_path"),
+        "needs_mcp": item.get("status") == "Uninitialized" or item.get("id") is None,
+        "reason": item.get("_reason"),
+    }
+
+
+def uninitialized_problem(slug: str, reason: str) -> Dict[str, Any]:
+    return {
+        "id": None,
+        "slug": slug,
+        "title": slug,
+        "difficulty": "?",
+        "status": "Uninitialized",
+        "mastery": "-",
+        "next_review": None,
+        "_reason": reason,
+        "_path": None,
+    }
+
+
+def active_open_candidates(root: Path, active_list: str) -> List[Dict[str, Any]]:
+    problems = problem_index(root)
+    slugs = list_slugs(root, active_list)
+    candidates: List[Dict[str, Any]] = []
+
+    if slugs:
+        for slug in slugs:
+            item = problems.get(slug)
+            if not item:
+                candidates.append(uninitialized_problem(slug, f"active-list:{active_list}:needs-init"))
+            elif item.get("status") in {"Doing", "Todo"}:
+                result = dict(item)
+                result["_reason"] = f"active-list:{active_list}"
+                candidates.append(result)
+        return candidates
+
+    for item in problems.values():
+        if active_list in item.get("lists", []) and item.get("status") in {"Doing", "Todo"}:
+            result = dict(item)
+            result["_reason"] = f"active-list:{active_list}"
+            candidates.append(result)
+    return sorted(candidates, key=lambda item: (item.get("id") is None, item.get("id") or 0, item.get("slug") or ""))
 
 
 def choose_next(root: Path) -> Optional[Dict[str, Any]]:
@@ -199,17 +263,7 @@ def choose_next(root: Path) -> Optional[Dict[str, Any]]:
     known = {item.get("slug") for item in all_problems(root) if not item.get("_error")}
     for slug in list_slugs(root, active_list):
         if slug not in known:
-            return {
-                "id": None,
-                "slug": slug,
-                "title": slug,
-                "difficulty": "?",
-                "status": "Uninitialized",
-                "mastery": "-",
-                "next_review": None,
-                "_reason": f"active-list:{active_list}:needs-init",
-                "_path": None,
-            }
+            return uninitialized_problem(slug, f"active-list:{active_list}:needs-init")
     for item in all_problems(root):
         if not item.get("_error") and item.get("status") in {"Doing", "Todo", "Review"}:
             result = dict(item)
@@ -345,6 +399,222 @@ def command_due(args: argparse.Namespace) -> int:
         return 0
     for item in items:
         print_problem_line(item)
+    return 0
+
+
+def int_from_profile(value: Any, default: int) -> int:
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def daily_targets(profile: Dict[str, Any]) -> Tuple[int, int]:
+    target = profile.get("daily_target", {})
+    new_target = int_from_profile(target.get("new_problems"), 1)
+    review_target = int_from_profile(target.get("review_problems"), 1)
+    return new_target, review_target
+
+
+def status_counts(problems: List[Dict[str, Any]]) -> Dict[str, int]:
+    counts = {status: 0 for status in sorted(STATUSES)}
+    for item in problems:
+        counts[item.get("status", "Todo")] = counts.get(item.get("status", "Todo"), 0) + 1
+    return counts
+
+
+def plan_day_data(root: Path, as_of: Optional[str] = None) -> Dict[str, Any]:
+    date = as_of or today()
+    profile = read_json(root / "study" / "profile.json", {})
+    active_list = profile.get("active_list", "example")
+    new_target, review_target = daily_targets(profile)
+    problems = [item for item in all_problems(root) if not item.get("_error")]
+    due_all = []
+    for item in due_problems(root, date):
+        result = dict(item)
+        result["_reason"] = "due-review"
+        due_all.append(result)
+    due_selected = due_all[:review_target]
+    review_shortfall = max(0, review_target - len(due_selected))
+    new_pool = active_open_candidates(root, active_list)
+    new_candidates = new_pool[:new_target]
+    extra_new_candidates = new_pool[new_target:new_target + review_shortfall]
+    as_of_date = parse_date(date)
+    upcoming_reviews = [
+        dict(item, _reason="upcoming-review") for item in problems
+        if item.get("status") in {"AC", "Review"}
+        and parse_date(item.get("next_review")) is not None
+        and parse_date(item.get("next_review")) > as_of_date
+    ]
+    upcoming_reviews = sorted(upcoming_reviews, key=lambda item: (item.get("next_review") or "", item.get("id") or 0))
+    recommended_next = due_selected[0] if due_selected else (new_candidates[0] if new_candidates else (extra_new_candidates[0] if extra_new_candidates else None))
+
+    return {
+        "date": date,
+        "active_list": active_list,
+        "targets": {
+            "new_problems": new_target,
+            "review_problems": review_target,
+        },
+        "problem_count": len(problems),
+        "status_counts": status_counts(problems),
+        "active_list_total_slugs": len(list_slugs(root, active_list)),
+        "due_reviews": [compact_problem(item) for item in due_selected],
+        "due_review_total": len(due_all),
+        "review_shortfall": review_shortfall,
+        "new_candidates": [compact_problem(item) for item in new_candidates],
+        "extra_new_candidates": [compact_problem(item) for item in extra_new_candidates],
+        "upcoming_reviews": [compact_problem(item) for item in upcoming_reviews[:5]],
+        "recommended_next": compact_problem(recommended_next) if recommended_next else None,
+    }
+
+
+def command_plan_day(args: argparse.Namespace) -> int:
+    root = root_from_args(args)
+    print(json.dumps(plan_day_data(root, args.date), indent=2, ensure_ascii=False))
+    return 0
+
+
+def session_path(root: Path, date: str) -> Path:
+    return root / "study" / "sessions" / f"{date}.md"
+
+
+def extract_raw_log(text: str) -> str:
+    raw_match = RAW_LOG_HEADING_RE.search(text)
+    if raw_match:
+        return text[raw_match.end():].strip()
+    entries = []
+    for match in LOG_ENTRY_RE.finditer(text):
+        body = match.group("body").strip()
+        entries.append("## Log Entry\n\n" + body)
+    return "\n\n".join(entries).strip()
+
+
+def parse_log_entries(raw_log: str) -> List[Dict[str, str]]:
+    entries: List[Dict[str, str]] = []
+    for match in LOG_ENTRY_RE.finditer(raw_log):
+        fields: Dict[str, str] = {}
+        for field in LOG_FIELD_RE.finditer(match.group("body")):
+            fields[field.group("key").lower()] = field.group("value").strip()
+        if fields:
+            entries.append(fields)
+    return entries
+
+
+def markdown_cell(value: str) -> str:
+    return value.replace("|", "\\|").replace("\n", " ").strip()
+
+
+def slug_refs(value: str) -> str:
+    backticked = SLUG_RE.findall(value)
+    if backticked:
+        return ", ".join(f"`{slug}`" for slug in backticked)
+    parts = split_csv(value)
+    if not parts:
+        parts = [part.strip() for part in value.split() if part.strip()]
+    return ", ".join(f"`{part}`" if re.fullmatch(r"[a-z0-9][a-z0-9-]*", part) else part for part in parts)
+
+
+def result_from_summary(summary: str) -> str:
+    upper = summary.upper()
+    if "AC" in upper:
+        return "AC"
+    if "REVIEW" in upper:
+        return "Review"
+    if "WA" in upper or "TLE" in upper or "RE" in upper:
+        return "Debug"
+    return "Logged"
+
+
+def format_bullets(items: List[str]) -> str:
+    cleaned = clean_lines(items)
+    if not cleaned:
+        return "- None recorded.\n"
+    return "\n".join(f"- {item}" for item in cleaned) + "\n"
+
+
+def format_problem_rows(entries: List[Dict[str, str]]) -> str:
+    rows = ["| Problem | Action | Result | Notes |", "|---|---|---|---|"]
+    if not entries:
+        rows.append("| - | - | - | No problem log entries recorded. |")
+        return "\n".join(rows) + "\n"
+    for entry in entries:
+        problems = slug_refs(entry.get("problems", "-"))
+        summary = entry.get("summary", "")
+        rows.append(
+            "| "
+            + " | ".join([
+                markdown_cell(problems or "-"),
+                "Practice",
+                markdown_cell(result_from_summary(summary)),
+                markdown_cell(summary or "-"),
+            ])
+            + " |"
+        )
+    return "\n".join(rows) + "\n"
+
+
+def command_finalize_session(args: argparse.Namespace) -> int:
+    root = root_from_args(args)
+    date = args.date or today()
+    path = session_path(root, date)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        text = path.read_text(encoding="utf-8")
+    else:
+        template = (root / "templates" / "session.md").read_text(encoding="utf-8")
+        text = template.replace("YYYY-MM-DD", date)
+
+    raw_log = extract_raw_log(text)
+    entries = parse_log_entries(raw_log)
+    plan = plan_day_data(root, date)
+    status = ", ".join(f"{key}={value}" for key, value in sorted(plan["status_counts"].items()))
+    due = ", ".join(f"`{item['slug']}`" for item in plan["due_reviews"]) or "0"
+    recommended = plan.get("recommended_next")
+    recommended_text = f"`{recommended['slug']}` ({recommended['reason']})" if recommended else "None"
+    goal = args.goal or (
+        f"Active list `{plan['active_list']}`: "
+        f"{plan['targets']['new_problems']} new, {plan['targets']['review_problems']} review."
+    )
+    takeaways = args.takeaways or [entry.get("summary", "") for entry in entries]
+    next_values = clean_lines([entry.get("next", "") for entry in entries])
+    next_text = args.next.strip() if args.next.strip() else (next_values[-1] if next_values else f"Continue with {recommended_text}.")
+
+    output = [
+        f"# Study Session - {date}",
+        "",
+        "## Goal",
+        "",
+        f"- {goal}",
+        "",
+        "## Progress Snapshot",
+        "",
+        f"- Active list: `{plan['active_list']}`",
+        f"- Daily target: {plan['targets']['new_problems']} new, {plan['targets']['review_problems']} review",
+        f"- Problems initialized: {plan['problem_count']}",
+        f"- Status: {status}",
+        f"- Due reviews: {due}",
+        f"- Recommended next: {recommended_text}",
+        "",
+        "## Problems",
+        "",
+        format_problem_rows(entries).rstrip(),
+        "",
+        "## Takeaways",
+        "",
+        format_bullets(takeaways).rstrip(),
+        "",
+        "## Next Session",
+        "",
+        f"- {next_text}",
+        "",
+        "## Raw Log",
+        "",
+        raw_log or "No raw log entries recorded.",
+        "",
+    ]
+    path.write_text("\n".join(output), encoding="utf-8")
+    print(f"Finalized session: {path}")
     return 0
 
 
@@ -596,6 +866,10 @@ def build_parser() -> argparse.ArgumentParser:
     due.add_argument("--date", help="Override date in YYYY-MM-DD format.")
     due.set_defaults(func=command_due)
 
+    plan = subparsers.add_parser("plan-day", help="Plan today's reviews and new problems.")
+    plan.add_argument("--date", help="Override date in YYYY-MM-DD format.")
+    plan.set_defaults(func=command_plan_day)
+
     plugin = subparsers.add_parser("plugin-files", help="List VS Code LeetCode plugin files.")
     plugin.add_argument("--slug", help="Filter by local problem slug.")
     plugin.add_argument("--id", dest="problem_id", type=int, help="Filter by LeetCode frontend ID.")
@@ -626,6 +900,13 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("--summary", default="")
     log.add_argument("--next", default="")
     log.set_defaults(func=command_log_session)
+
+    finalize = subparsers.add_parser("finalize-session", help="Rewrite a daily session into structured form.")
+    finalize.add_argument("--date", help="Session date YYYY-MM-DD. Defaults to today.")
+    finalize.add_argument("--goal", default="")
+    finalize.add_argument("--takeaway", dest="takeaways", action="append", default=[], help="Session takeaway. Repeatable.")
+    finalize.add_argument("--next", default="")
+    finalize.set_defaults(func=command_finalize_session)
 
     archive = subparsers.add_parser("archive-solution", help="Archive a solution into the problem folder.")
     archive.add_argument("--slug", required=True)
