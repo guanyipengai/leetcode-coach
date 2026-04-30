@@ -1,4 +1,0 @@
-interface:
-  display_name: "LeetCode Study Coach"
-  short_description: "Coach LeetCode study sessions."
-  default_prompt: "今天开始学习 LeetCode。"

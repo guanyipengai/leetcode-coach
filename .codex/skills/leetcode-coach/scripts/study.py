@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Zero-dependency LeetCode study workspace helper."""
+"""Internal helper for the LeetCode Coach skill."""
 
 from __future__ import annotations
 
@@ -20,6 +20,11 @@ LC_CODE_RE = re.compile(r"(?P<start>^[ \t#/-]*@lc code=start[^\n]*\n)(?P<code>.*
 STATUSES = {"Todo", "Doing", "AC", "Review"}
 MASTERIES = {"new", "shaky", "ok", "solid"}
 PLUGIN_WORKSPACE = Path("workspace") / "leetcode"
+ROOT_MARKERS = (
+    Path("study") / "profile.json",
+    Path("problems"),
+    Path("lists"),
+)
 
 
 def today() -> str:
@@ -38,10 +43,30 @@ def split_csv(value: Optional[str]) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def is_workspace_root(path: Path) -> bool:
+    return all((path / marker).exists() for marker in ROOT_MARKERS)
+
+
+def find_workspace_root(start: Path) -> Optional[Path]:
+    current = start.resolve()
+    if current.is_file():
+        current = current.parent
+    for candidate in (current, *current.parents):
+        if is_workspace_root(candidate):
+            return candidate
+    return None
+
+
 def root_from_args(args: argparse.Namespace) -> Path:
     if getattr(args, "root", None):
         return Path(args.root).expanduser().resolve()
-    return Path(__file__).resolve().parents[1]
+    cwd_root = find_workspace_root(Path.cwd())
+    if cwd_root:
+        return cwd_root
+    script_root = find_workspace_root(Path(__file__).resolve())
+    if script_root:
+        return script_root
+    return Path.cwd().resolve()
 
 
 def read_json(path: Path, default: Any) -> Any:

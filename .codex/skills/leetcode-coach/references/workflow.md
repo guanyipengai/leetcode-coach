@@ -3,7 +3,7 @@
 ## Repository Model
 
 - `note.md` metadata is the source of truth for progress.
-- `scripts/study.py` is the query/update interface.
+- The skill's bundled helper script is the agent-only query/update interface.
 - `lists/*.md` are study views, not progress stores.
 - `study/sessions/*.md` are daily logs.
 - `knowledge/patterns/*.md` are reusable pattern notes.
@@ -11,14 +11,16 @@
 
 ## Session Loop
 
-1. Recover state with `study.py status --brief`.
+1. Recover state with the skill's bundled helper.
 2. Pick a route: continue, review, Daily, or topic.
 3. Fetch problem details through MCP.
 4. Initialize or update the local problem note.
 5. Ask the user to use the VS Code LeetCode plugin file for Test/Submit.
-6. Coach with progressive hints and review plugin code.
-7. After AC, archive plugin code into `problems/.../solution.py`.
-8. Update metadata, notes, session log, and review date.
+6. Teach before implementation: restate the problem, clarify constraints, discuss examples, identify patterns, and stop before full code.
+7. Coach with progressive hints while the learner writes and submits through the plugin.
+8. Review plugin code or judge failures until AC.
+9. After AC, archive plugin code into `problems/.../solution.py`.
+10. Update metadata, notes, session log, and review date.
 
 ## Public Template Boundary
 

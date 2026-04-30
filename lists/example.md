@@ -4,5 +4,5 @@ This list is intentionally tiny. Replace it or ask Codex to create a new list fr
 
 Add slugs as backticked bullets when you are ready:
 
-- two-sum
-- group-anagrams
+- `two-sum`
+- `group-anagrams`

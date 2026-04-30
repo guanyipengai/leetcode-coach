@@ -1,50 +1,61 @@
-# LeetCode Study Brain
+# LeetCode Coach
 
-A Codex + MCP + Skill powered template for building a personal LeetCode second brain.
+An agent-assisted LeetCode practice workspace for planning sessions, solving in VS Code, getting coached through mistakes, and turning accepted solutions into durable Markdown notes.
 
-The repository starts as a clean learning scaffold. It does not include full LeetCode problem statements or a bundled Hot 100 list. After cloning, use Codex and the LeetCode MCP to initialize only the problems or lists you want to study.
+LeetCode Coach is a template repository. You solve with the VS Code LeetCode extension, Codex coaches the session, LeetCode MCP fetches metadata on demand, and Markdown keeps the long-term learning record.
 
-## Core Ideas
+![LeetCode Coach architecture](assets/architecture.png)
 
-- One problem, one `note.md`.
-- Each `note.md` owns its progress metadata.
-- Python scripts query and update notes so agents do not need to load every file.
-- Codex Skills provide the coaching workflow.
-- Problem statements are fetched on demand through MCP, not stored in the public template.
+## Features
 
-LeetCode content is copyrighted by LeetCode. Keep this template focused on links, metadata, your own notes, and your own solutions. See [LeetCode Terms](https://leetcode.com/terms).
+- **Coaching loop**: resume progress, choose a route, give progressive hints, review code, and record outcomes.
+- **VS Code submit flow**: use the LeetCode extension for Test and Submit while keeping plugin files out of Git.
+- **Per-problem notes**: each problem owns its metadata, reasoning, mistakes, review log, and archived solution.
+- **Progressive disclosure**: the coach starts from compact state instead of loading every note.
+- **List-friendly practice**: support Hot 100, topic lists, Daily, and review routes without one giant JSON file.
 
-## Daily Use
+## How It Works
 
-Start a new Codex session in this repository and say:
+The learner writes and submits code through the VS Code LeetCode extension. The coach plans, hints, reviews, and records. LeetCode MCP provides live problem metadata. The Markdown repo stores notes, sessions, patterns, and accepted solutions.
+
+`workspace/leetcode/` is the ignored submit workspace. `problems/.../note.md` and `solution.py` are the durable study record.
+
+## Quick Start
+
+1. Use this repository as a template or clone it.
+2. Open the repo in VS Code.
+3. Install and sign in to the VS Code LeetCode extension.
+4. Configure LeetCode MCP in Codex if it is not already available.
+5. Start a Codex session in this repository:
 
 ```text
-用 leetcode-study-coach，今天开始学习。
+用 leetcode-coach，今天开始 LeetCode 训练。
 ```
 
-The coach should:
+The coach should summarize your current progress, recommend a route, fetch the selected problem through MCP, guide the solve, review your code, and update the second brain after AC.
 
-1. Run `python scripts/study.py status --brief`.
-2. Summarize goals, progress, due reviews, and the latest session.
-3. Suggest whether to continue the active list, review due problems, solve Daily, or switch topic.
-4. Fetch the chosen problem through LeetCode MCP.
-5. Coach with progressive hints.
-6. Review your solution.
-7. Update the problem note, session log, and next review date.
+## Daily Workflow
 
-## Repository Layout
+1. Start a Codex session and invoke `leetcode-coach`.
+2. Choose a route: active list, due review, Daily, or topic.
+3. Let the coach fetch metadata and initialize the local note.
+4. Solve in the VS Code LeetCode extension under `workspace/leetcode/`.
+5. Ask for hints, edge-case checks, complexity review, or code review when needed.
+6. After AC, tell the coach so it can archive the code, update notes, and schedule review.
+
+## Repository Structure
 
 ```text
-.codex/skills/leetcode-study-coach/  # Project skill
-knowledge/patterns/                  # Reusable problem patterns
-lists/                               # Study lists by slug
-problems/                            # One folder per problem
-scripts/study.py                     # Zero-dependency CLI for agents
-study/goals.md                       # Learning goals
-study/profile.json                   # Preferences and active list
-study/sessions/                      # Daily logs
-templates/                           # Note/session/pattern/code templates
-workspace/leetcode/                  # Ignored VS Code LeetCode plugin workspace
+.codex/skills/leetcode-coach/  # Project Skill, references, and bundled automation
+.vscode/settings.json          # VS Code LeetCode project settings
+knowledge/patterns/            # Reusable pattern notes
+lists/                         # Study lists by LeetCode slug
+problems/                      # One directory per initialized problem
+study/goals.md                 # Learning goals and current focus
+study/profile.json             # Preferences and active list
+study/sessions/                # Daily session logs
+templates/                     # Note/session/pattern/code templates
+workspace/leetcode/            # Ignored VS Code LeetCode submit workspace
 ```
 
 Problem folders are grouped by frontend ID:
@@ -57,50 +68,67 @@ problems/
       solution.py
 ```
 
-## CLI
+## Data Model
 
-Use the CLI directly or let the Skill call it:
-
-```bash
-python scripts/study.py status --brief
-python scripts/study.py next
-python scripts/study.py due
-python scripts/study.py init-problem --id 1 --slug two-sum --title "Two Sum" --difficulty Easy --tags array,hash-table --list my-list
-python scripts/study.py plugin-files --slug two-sum
-python scripts/study.py archive-solution --slug two-sum --from-plugin
-python scripts/study.py finish --slug two-sum --status AC --mastery ok --review-in-days 7
-python scripts/study.py check
-```
-
-## VS Code LeetCode Plugin
-
-This template includes project-level VS Code settings for the LeetCode plugin:
-
-- Plugin files are generated under `workspace/leetcode/`.
-- `workspace/leetcode/` is ignored by Git.
-- Use plugin files for `Test` and `Submit`.
-- After AC, ask Codex to archive the accepted code into the matching `problems/.../solution.py`.
-
-The long-term source of truth remains each problem's `note.md` and archived `solution.py`.
-
-## Adding A Study List
-
-Create a Markdown file under `lists/` with slugs:
+Each `note.md` starts with a small JSON metadata block:
 
 ```md
-# My Topic
+<!-- leetcode-meta
+{
+  "id": 1,
+  "slug": "two-sum",
+  "title": "Two Sum",
+  "difficulty": "Easy",
+  "tags": ["array", "hash-table"],
+  "lists": ["my-list"],
+  "status": "Todo",
+  "mastery": "new",
+  "last_practiced": null,
+  "next_review": null,
+  "mistake_tags": []
+}
+-->
+```
+
+That metadata is the source of truth for progress. Lists are views, sessions are logs, and pattern notes are reusable knowledge. The detailed asset contract lives inside the Skill references.
+
+## VS Code LeetCode Integration
+
+This repo includes project-level settings for the VS Code LeetCode extension:
+
+```json
+{
+  "leetcode.workspaceFolder": "${workspaceFolder}/workspace/leetcode",
+  "leetcode.filePath": "${id}.${kebab-case-name}.${ext}",
+  "leetcode.defaultLanguage": "python3",
+  "leetcode.endpoint": "leetcode-cn"
+}
+```
+
+Plugin-generated files are intentionally ignored by Git. They are for online judge interaction only. The coach archives the accepted code into the matching problem directory after you report AC.
+
+## Study Lists
+
+Create Markdown lists under `lists/`:
+
+```md
+# Hash Table Practice
 
 - `two-sum`
 - `group-anagrams`
 ```
 
-The script treats lists as views. Progress still lives in the problem's own `note.md`.
+Set `active_list` in `study/profile.json`, or ask the coach to switch routes. A problem can appear in multiple lists while still keeping one canonical note.
 
-## Publishing This Template
+## Privacy And Copyright
 
-For a clean public template:
+- This is not an official LeetCode project.
+- This is not a problem mirror, auto-solver, or auto-submitter.
+- Do not commit LeetCode cookies, CSRF tokens, or session values.
+- Do not commit full LeetCode problem statements copied from the site.
+- Store links, metadata, your own explanations, your own mistakes, and your own solutions.
+- LeetCode content is governed by [LeetCode Terms](https://leetcode.com/terms).
 
-- Keep the scaffold, scripts, templates, and Skill.
-- Do not commit LeetCode cookies or session values.
-- Do not commit full problem statements copied from LeetCode.
-- Keep personal progress only if this is your private learning repo.
+## License
+
+Add a license before publishing this as a public template.

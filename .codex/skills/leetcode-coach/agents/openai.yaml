@@ -1,0 +1,4 @@
+interface:
+  display_name: "LeetCode Coach"
+  short_description: "Coach LeetCode practice sessions."
+  default_prompt: "今天开始 LeetCode 训练。"
