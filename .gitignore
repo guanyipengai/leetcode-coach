@@ -1,0 +1,9 @@
+.cache/
+__pycache__/
+*.py[cod]
+.DS_Store
+.env
+.env.*
+leetcode-session.txt
+leetcode-csrf.txt
+workspace/leetcode/

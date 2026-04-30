@@ -1,0 +1,11 @@
+{
+  "language": "python3",
+  "communication_language": "zh-CN",
+  "active_list": "example",
+  "daily_target": {
+    "new_problems": 1,
+    "review_problems": 1
+  },
+  "hint_policy": "progressive",
+  "review_intervals_days": [1, 7, 30]
+}
