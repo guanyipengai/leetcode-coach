@@ -16,7 +16,21 @@
   "mastery": "ok",
   "last_practiced": "2026-04-30",
   "next_review": "2026-05-07",
-  "mistake_tags": []
+  "mistake_tags": [],
+  "stats": {
+    "attempts": 0,
+    "hint_level_reached": 0,
+    "solve_minutes": null,
+    "first_try_ac": null,
+    "judge_failures": [],
+    "recall_score": null,
+    "teach_back_done": false,
+    "last_mode": null
+  },
+  "links": {
+    "leetcode": "https://leetcode.com/problems/two-sum/",
+    "leetcode_cn": "https://leetcode.cn/problems/two-sum/"
+  }
 }
 -->
 
@@ -44,6 +58,14 @@ Scan left to right. Keep a map from seen value to its index. For each number, co
 
 - Time: `O(n)`
 - Space: `O(n)`
+
+## Teach Back
+
+- Key invariant:
+- Why this data structure / state works:
+- Complexity and tradeoff:
+- Easiest edge case to miss:
+- When this pattern does NOT apply:
 
 ## Mistakes
 

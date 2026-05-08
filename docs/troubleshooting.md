@@ -2,7 +2,7 @@
 
 ## `study/profile.json not found`
 
-This overlay provides `study/profile.example.json` to avoid overwriting your personal profile. Copy or merge it manually:
+This repository provides `study/profile.example.json` as a reference profile. Copy or merge it manually if your local `study/profile.json` is missing the optimized keys:
 
 ```bash
 cp study/profile.example.json study/profile.json

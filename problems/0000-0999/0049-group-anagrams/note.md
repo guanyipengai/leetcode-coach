@@ -18,7 +18,21 @@
   "mastery": "ok",
   "last_practiced": "2026-04-30",
   "next_review": "2026-05-07",
-  "mistake_tags": []
+  "mistake_tags": [],
+  "stats": {
+    "attempts": 0,
+    "hint_level_reached": 0,
+    "solve_minutes": null,
+    "first_try_ac": null,
+    "judge_failures": [],
+    "recall_score": null,
+    "teach_back_done": false,
+    "last_mode": null
+  },
+  "links": {
+    "leetcode": "https://leetcode.com/problems/group-anagrams/",
+    "leetcode_cn": "https://leetcode.cn/problems/group-anagrams/"
+  }
 }
 -->
 
@@ -49,6 +63,14 @@ Alternative key: build a length-26 count array for each string and convert it to
 
 - Time: `O(n * k log k)`, where `n` is the number of strings and `k` is the maximum string length.
 - Space: `O(n * k)` for the grouped output and hash map keys.
+
+## Teach Back
+
+- Key invariant:
+- Why this data structure / state works:
+- Complexity and tradeoff:
+- Easiest edge case to miss:
+- When this pattern does NOT apply:
 
 ## Mistakes
 
