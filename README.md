@@ -9,7 +9,7 @@
 > A Codex skill and local study workspace that turns LeetCode practice into a review-driven coaching loop: solve in VS Code, get progressive hints, archive accepted solutions, and schedule evidence-based review.
 
 <p align="center">
-  <img src="assets/architecture.png" alt="LeetCode Coach architecture and learning loop" width="920">
+  <img src="assets/architecture2.png" alt="LeetCode Coach architecture and learning loop" width="920">
 </p>
 
 
