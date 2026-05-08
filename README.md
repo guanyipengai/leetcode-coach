@@ -147,17 +147,6 @@ A problem should not be marked `solid` until teach-back is complete. In practice
 - the easiest edge case to miss;
 - when this pattern does not apply.
 
-## Helper commands
-
-Make targets:
-
-```bash
-make check
-make strict-check
-make migrate-preview
-make migrate
-```
-
 ## VS Code LeetCode integration
 
 This repo expects project-level settings similar to:
@@ -197,22 +186,6 @@ make strict-check
 ## Project status
 
 This project is usable as a personal LeetCode training workspace, but it is still early. The most stable parts are the repository contract, problem note format, and deterministic helper commands. Before using it as a public template, consider adding `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md`.
-
-## Roadmap
-
-- richer mistake and review dashboards;
-- more pattern-note templates and examples;
-- coaching behavior evals, especially for answer-dumping prevention;
-- problem-list import and export helpers;
-- optional LangGraph runtime for resumable multi-step coaching sessions;
-- installable Codex plugin packaging.
-
-## Privacy and copyright
-
-- Do not commit LeetCode cookies, CSRF tokens, session values, or other secrets.
-- Do not commit copied full problem statements.
-- Store links, metadata, your own explanations, your own mistakes, and your own accepted solutions.
-- LeetCode content is governed by the LeetCode Terms of Service.
 
 ## Contributing
 
