@@ -1,34 +1,86 @@
-# Workflow Reference
+# LeetCode Coach Workflow
 
-## Repository Model
+## Daily Start
 
-- `note.md` metadata is the source of truth for progress.
-- The skill's bundled helper script is the agent-only query/update interface.
-- `lists/*.md` are study views, not progress stores.
-- `study/sessions/*.md` are daily logs.
-- `knowledge/patterns/*.md` are reusable pattern notes.
-- `workspace/leetcode/` is the ignored VS Code LeetCode plugin submit workspace.
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py status --brief
+python3 .codex/skills/leetcode-coach/scripts/study.py plan-day
+```
 
-## Session Loop
+Coach in this order:
 
-1. Recover state with the skill's bundled helper.
-2. Plan the day with the skill's bundled helper: due reviews first, then active-list new problems.
-3. Pick a route: continue, review, Daily, or topic.
-4. Fetch problem details through MCP.
-5. Initialize or update the local problem note.
-6. Ask the user to use the VS Code LeetCode plugin file for Test/Submit.
-7. For reviews, ask one recall question before code.
-8. Teach before implementation: restate the problem, clarify constraints, discuss examples, identify patterns, and stop before full code.
-9. Coach with progressive hints while the learner writes and submits through the plugin.
-10. Review plugin code or judge failures until AC.
-11. After AC, ask a short self-check, then archive plugin code into `problems/.../solution.py`.
-12. Update metadata, notes, optional pattern notes, session log, and review date.
-13. At session end, finalize the daily session into structured sections while preserving raw logs.
+1. Due reviews.
+2. Existing `Doing` / `Review` problems.
+3. New active-list problems.
+4. Uninitialized active-list problems after MCP metadata lookup.
 
-## Public Template Boundary
+## New Problem
 
-Do not commit LeetCode cookies, session tokens, or full problem statements.
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py init-problem \
+  --id 49 \
+  --slug group-anagrams \
+  --title "Group Anagrams" \
+  --difficulty Medium \
+  --tags "array,hash-table,string,sorting" \
+  --list hot100
+```
 
-Problem content should be fetched from MCP during study. Notes should contain the user's own restatement and reasoning.
+Use `guided-solve` by default unless the user asks for interview simulation.
 
-Plugin-generated files are temporary submit files and should not be committed.
+## Accepted Submission
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py archive-solution \
+  --slug group-anagrams \
+  --from-plugin \
+  --mode standalone \
+  --with-tests
+```
+
+Then require teach-back. Only after that:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py finish \
+  --slug group-anagrams \
+  --status AC \
+  --mastery ok \
+  --mode guided-solve \
+  --quality 4 \
+  --hint-level 1 \
+  --solve-minutes 22 \
+  --first-try-ac false \
+  --judge-failures "WA" \
+  --mistake-tags "duplicate-handling" \
+  --teach-back true
+```
+
+## Review Problem
+
+Use `redo-from-memory`:
+
+1. Ask for invariant.
+2. Ask for approach and complexity.
+3. Ask for the easiest edge case to miss.
+4. Let the user code.
+5. Finish with updated quality and mistakes.
+
+## Migration
+
+Preview first:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py migrate
+```
+
+Write changes:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py migrate --write
+```
+
+Validate:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py check
+```

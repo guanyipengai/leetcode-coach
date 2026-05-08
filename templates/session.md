@@ -1,25 +1,17 @@
-# Study Session - YYYY-MM-DD
+# Study Session {{date}}
 
-## Goal
+## Plan
 
-- 
-
-## Progress Snapshot
-
-- Active list:
 - Due reviews:
-- Recommended next:
+- New/open problems:
+- Focus mistake tag:
+- Training mode:
 
-## Problems
+## Raw Log
 
-| Problem | Action | Result | Notes |
-|---|---|---|---|
-|  |  |  |  |
+## Summary
 
-## Takeaways
-
-- 
-
-## Next Session
-
-- 
+- What improved:
+- What still felt shaky:
+- Pattern to update:
+- Next session:

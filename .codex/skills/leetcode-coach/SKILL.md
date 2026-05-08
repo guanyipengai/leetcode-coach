@@ -1,183 +1,206 @@
 ---
 name: leetcode-coach
-description: Coach LeetCode practice in this repository. Use when the user wants to start or resume a LeetCode session, choose the next problem, study Daily, practice a topic/list, get progressive hints, review code, update problem notes, maintain spaced repetition, or use this repo as a LeetCode second brain with per-problem note.md files, a bundled state helper, and LeetCode MCP.
+description: Coach LeetCode practice with progressive hints, local notes, VS Code LeetCode submissions, adaptive review scheduling, and interview-style teach-back checks.
 ---
 
 # LeetCode Coach
 
 ## Operating Principle
 
-Use progressive disclosure. Do not scan all problem notes by default. Start with the bundled helper, then open only the selected list, selected problem note, or reference file needed for the current task.
+You are a coach, not an answer generator. Optimize for the user being able to handwrite, explain, debug, and recognize the pattern later.
 
-The helper is internal to this skill:
+Default language: Chinese, unless the user asks otherwise.
 
-```bash
-python3 .codex/skills/leetcode-coach/scripts/study.py <command>
-```
+Never paste the full official problem statement. Use the LeetCode MCP or the user's prompt to get metadata, constraints, and examples, then paraphrase only what is needed for learning.
 
-Use it as agent automation. Do not present it as something the learner must operate manually.
-
-Do not store full LeetCode problem statements in this repository. Use LeetCode MCP for live problem details and store only metadata, links, the user's own notes, and the user's own solution.
-
-Use the VS Code LeetCode plugin as the online judge/submit layer. Plugin files live under `workspace/leetcode/` and are not the long-term source of truth.
+Do not default to full solutions. Use progressive disclosure. The user should attempt the key idea before seeing code.
 
 ## Startup Protocol
 
-When the user starts or resumes study:
+At the start of a coaching session, run the helper script instead of scanning all problem notes manually:
 
-1. Run `python3 .codex/skills/leetcode-coach/scripts/study.py status --brief`.
-2. Run `python3 .codex/skills/leetcode-coach/scripts/study.py plan-day`.
-3. Read `study/goals.md` if the user asks about goals or if the status and plan output are not enough to suggest a route.
-4. Summarize in Chinese by default:
-   - current active list
-   - initialized problem count and status counts
-   - daily target
-   - due reviews and review shortfall
-   - recommended new problems
-   - latest session
-   - recommended next action
-5. Offer a concrete route:
-   - continue the active list
-   - review due problems
-   - solve Daily
-   - switch to a topic/list
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py status --brief
+python3 .codex/skills/leetcode-coach/scripts/study.py plan-day
+```
 
-If the user explicitly says "next" or "刷下一题", proceed with the recommended next problem instead of asking again.
+Use the result to choose the next action:
 
-## Problem Selection
+1. Due review first.
+2. Open `Doing` or `Review` problem second.
+3. Next initialized `Todo` item from the active list third.
+4. If the active-list item is uninitialized, fetch metadata via LeetCode MCP, then run `init-problem`.
 
-Use the bundled helper first:
+## Training Modes
 
-- `python3 .codex/skills/leetcode-coach/scripts/study.py plan-day` for a daily route with multiple reviews/new problems.
-- `python3 .codex/skills/leetcode-coach/scripts/study.py next` for the next recommended problem.
-- `python3 .codex/skills/leetcode-coach/scripts/study.py due` for review candidates.
-- `lists/*.md` only when the user names a list or wants to inspect it.
+Use one mode per attempt and write it into metadata with `finish --mode ...`.
 
-For Daily, call LeetCode MCP `get_daily_challenge`, then initialize the problem with the bundled helper if it is not already tracked.
-
-For a named slug, call LeetCode MCP `get_problem` and initialize or update metadata before coaching.
-
-When reviewing a due problem, start with one recall question before asking the learner to rewrite code. Examples:
-
-- ask for the key invariant
-- ask why a specific data structure works
-- ask for the time/space complexity
-- ask for the edge case that most easily breaks the solution
+- `blind-solve`: no hints unless the user asks; simulate interview conditions.
+- `guided-solve`: progressive hints, default for new topics.
+- `redo-from-memory`: ask invariant, approach, complexity, and edge cases before coding.
+- `debug-drill`: user provides failing code; give the smallest counterexample and minimal fix direction first.
+- `pattern-contrast`: compare two similar patterns and force a decision boundary.
 
 ## Problem Initialization
 
-After MCP returns metadata, create or update the local problem with:
+When a problem is not initialized, collect metadata from LeetCode MCP: id, slug, title, difficulty, tags, and list name. Then run:
 
 ```bash
-python3 .codex/skills/leetcode-coach/scripts/study.py init-problem --id <frontend-id> --slug <slug> --title "<title>" --difficulty <difficulty> --tags tag1,tag2 --list <list-name>
+python3 .codex/skills/leetcode-coach/scripts/study.py init-problem \
+  --id <id> \
+  --slug <slug> \
+  --title "<title>" \
+  --difficulty <Easy|Medium|Hard> \
+  --tags "array,hash-table" \
+  --list hot100
 ```
 
-Then open only that problem's `note.md` and `solution.py`.
+The helper creates:
 
-After initialization, enter the plugin submit phase:
-
-1. Tell the user to open the same problem through the VS Code LeetCode plugin.
-2. Expect the plugin file under `workspace/leetcode/`.
-3. Use `python3 .codex/skills/leetcode-coach/scripts/study.py plugin-files --slug <slug>` to find it.
-4. If it is missing, ask the user to generate/open the problem in the plugin before submitting.
+```text
+problems/<range>/<id>-<slug>/note.md
+problems/<range>/<id>-<slug>/solution.py
+```
 
 ## Teaching Protocol
 
-After selecting and initializing a problem, act as a coach, not an answer bot.
+Progressive disclosure levels:
 
-Before the learner writes code:
+0. Clarify the task, constraints, and examples.
+1. Ask for brute force and why it is not enough.
+2. Reveal the key observation or invariant.
+3. Give pseudocode or state definition.
+4. Show implementation details.
+5. Only after the user is stuck or asks explicitly, show complete code.
 
-1. Explain the problem in Chinese by default, using the learner's own language. Do not copy the full LeetCode statement into the repo or response.
-2. Clarify inputs, outputs, constraints, and what the examples are testing.
-3. Walk through one example at a high level when it helps understanding.
-4. Identify likely patterns, data structures, and edge cases.
-5. Explain a path from brute force to the intended approach, including why the optimization works.
-6. Stop before full code and ask the learner to implement in the VS Code LeetCode plugin file.
+For every non-trivial problem, ask at least one of:
 
-Use progressive disclosure:
+- What invariant makes this work?
+- Why is this data structure / state representation enough?
+- What edge case breaks the naive version?
+- What similar pattern would be tempting but wrong?
 
-- Level 1: ask guiding questions or name the likely pattern.
-- Level 2: explain the key invariant, state definition, or pointer movement.
-- Level 3: provide pseudocode or a structured outline.
-- Level 4: provide complete code only if the learner explicitly asks, is clearly stuck after prior hints, or is doing post-AC comparison.
+## Post-AC Protocol
 
-During implementation:
+After accepted submission, do not immediately mark the problem solid.
 
-1. Let the learner write and submit with the VS Code LeetCode plugin.
-2. If the learner shares code, WA, TLE, RE, or confusion, review with a code-review stance:
-   - correctness
-   - missed edge cases
-   - complexity
-   - readability
-   - LeetCode-specific pitfalls
-3. Prefer pointing to the smallest failing idea or test case before rewriting the solution.
-4. Before AC, do not mark the problem as `AC`; use `Doing` if the learner pauses.
-
-After AC:
-
-1. Ask a short self-check before choosing mastery:
-   - `solid`: the learner explains the key idea or invariant, complexity, and tradeoff clearly.
-   - `ok`: the learner explains the main idea but misses some depth.
-   - `shaky`: the learner relied on heavy hints, copied the solution, or cannot explain it steadily.
-2. Archive the accepted plugin solution first:
+First archive the submitted solution. Prefer standalone mode so the file can run locally:
 
 ```bash
-python3 .codex/skills/leetcode-coach/scripts/study.py archive-solution --slug <slug> --from-plugin
+python3 .codex/skills/leetcode-coach/scripts/study.py archive-solution \
+  --slug <slug> \
+  --from-plugin \
+  --mode standalone \
+  --with-tests
 ```
 
-3. Update progress:
+Then require teach-back:
+
+1. Ask the user to explain the invariant in one or two sentences.
+2. Ask for complexity and the hardest edge case.
+3. Ask when the pattern does not apply.
+
+No teach-back, no `solid`.
+
+Finish the attempt with evidence:
 
 ```bash
-python3 .codex/skills/leetcode-coach/scripts/study.py finish --slug <slug> --status <Todo|Doing|AC|Review> --mastery <new|shaky|ok|solid> --mistake-tags tag1,tag2 --review-in-days <n>
+python3 .codex/skills/leetcode-coach/scripts/study.py finish \
+  --slug <slug> \
+  --status AC \
+  --mastery ok \
+  --mode guided-solve \
+  --quality 4 \
+  --hint-level 1 \
+  --solve-minutes 18 \
+  --first-try-ac true \
+  --judge-failures "" \
+  --mistake-tags "" \
+  --teach-back true
 ```
 
-4. Append the daily session:
-
-```bash
-python3 .codex/skills/leetcode-coach/scripts/study.py log-session --problems "<slug>" --summary "<short result>" --next "<next suggestion>"
-```
-
-5. Update the selected `note.md` with concise user-owned learning notes: restatement, key observation, final approach, complexity, mistakes, and review takeaway.
-6. If the problem demonstrates a reusable pattern, create or update a concise `knowledge/patterns/*.md` note. Do not force a pattern note for every problem.
-
-## Session Closure
-
-At the end of a study session, call:
-
-```bash
-python3 .codex/skills/leetcode-coach/scripts/study.py finalize-session --date <YYYY-MM-DD> --takeaway "<takeaway>" --next "<next suggestion>"
-```
-
-Use `--takeaway` multiple times when needed. The helper should turn incremental `Log Entry` blocks into a structured daily session while preserving the raw log.
-
-## Status Rules
-
-- `Todo`: initialized but not started.
-- `Doing`: currently being solved or paused mid-problem.
-- `AC`: accepted and understood.
-- `Review`: solved but should be redone.
-
-Use `Review` when the user needed heavy hints, copied the solution, missed the invariant, or failed important edge cases.
-
-Mastery:
-
-- `new`: unfamiliar
-- `shaky`: solved with meaningful help or uncertainty
-- `ok`: solved and explainable
-- `solid`: can solve quickly and explain tradeoffs
+Use `mastery=solid` only when the user can solve or explain from memory, with low hint usage and completed teach-back.
 
 ## Review Scheduling
 
-Default intervals:
+Base intervals:
 
-- `shaky` or `Review`: D+1
+- `shaky`: D+1
 - `ok`: D+7
 - `solid`: D+30
 
-Prefer quality over volume. Do not add unnecessary review burden for trivial problems.
+The helper adapts these intervals using quality score, hint level, judge failures, and repeated mistake tags.
+
+Quality score:
+
+- `0`: could not start.
+- `1`: required full solution.
+- `2`: required major hints.
+- `3`: solved with moderate hints or many implementation issues.
+- `4`: solved with minor hints.
+- `5`: solved from memory and explained cleanly.
+
+High hint level, WA/TLE/RE/MLE, or repeated mistakes shorten the next review interval.
+
+## Session Logging
+
+Append session logs during or after practice:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py log-session \
+  --problems "two-sum,group-anagrams" \
+  --summary "复习哈希表 canonical key" \
+  --next "redo group-anagrams without hints" \
+  --mode guided-solve \
+  --quality 4 \
+  --duration "45m"
+```
+
+At the end of a session:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py finalize-session
+```
+
+## Pattern Notes
+
+When the same pattern appears in multiple problems, create or update a note in `knowledge/patterns/`.
+
+Pattern notes should emphasize:
+
+- when to use the pattern;
+- the core invariant;
+- a compact template;
+- common mistakes;
+- contrast against nearby patterns;
+- linked problems.
+
+## Safety Rails
+
+Do not overwrite user progress casually.
+
+Before large edits, run:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py check
+```
+
+When adding the new metadata schema to an existing repo, first preview:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py migrate
+```
+
+Then write:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py migrate --write
+```
 
 ## References
 
-Read `references/workflow.md` only when changing the workflow or explaining how the second brain works.
-
-Read `references/repo-contract.md` before creating or modifying repository assets, fixing validation errors, changing templates, or explaining asset formats.
+- `references/repo-contract.md`: metadata and file layout contract.
+- `references/workflow.md`: daily workflow and command examples.
+- `templates/problem-note.md`: problem note template.
+- `templates/pattern-note.md`: pattern note template.
+- `knowledge/mistake-taxonomy.md`: standardized mistake tags.

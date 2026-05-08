@@ -1,0 +1,21 @@
+{
+  "language": "python3",
+  "communication_language": "zh-CN",
+  "active_list": "hot100",
+  "daily_target": {
+    "review": 2,
+    "new": 2
+  },
+  "hint_policy": "progressive",
+  "review_intervals_days": [1, 7, 30],
+  "leetcode_endpoint": "leetcode-cn",
+  "problem_url_template": "https://leetcode.cn/problems/{slug}/",
+  "training_modes": [
+    "blind-solve",
+    "guided-solve",
+    "redo-from-memory",
+    "debug-drill",
+    "pattern-contrast"
+  ],
+  "solid_requires_teach_back": true
+}

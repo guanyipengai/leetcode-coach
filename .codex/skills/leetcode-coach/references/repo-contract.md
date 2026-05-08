@@ -1,24 +1,27 @@
-# Repository Asset Contract
+# LeetCode Coach Repo Contract
 
-This contract is for the LeetCode Coach agent. Keep strict rules small and stable. Human-owned learning notes should stay flexible unless the helper script depends on a field or format.
+This contract keeps the repo safe for long-term study. The machine-readable metadata in each problem note is the source of truth; list files and summaries are views.
 
-## Strict Contracts
-
-### Problem Notes
-
-Each tracked problem lives at:
+## Required Layout
 
 ```text
-problems/<bucket>/<frontend-id>-<slug>/note.md
+.codex/skills/leetcode-coach/SKILL.md
+.codex/skills/leetcode-coach/scripts/study.py
+.codex/skills/leetcode-coach/references/repo-contract.md
+lists/<list-name>.md
+problems/<range>/<id>-<slug>/note.md
+problems/<range>/<id>-<slug>/solution.py
+study/profile.json
+templates/problem-note.md
+templates/pattern-note.md
+knowledge/mistake-taxonomy.md
 ```
 
-Example:
+`workspace/leetcode/` is a transient VS Code LeetCode plugin workspace and should stay ignored.
 
-```text
-problems/0000-0999/0001-two-sum/note.md
-```
+## Problem Metadata
 
-Each `note.md` must start with one JSON metadata comment:
+Every `note.md` must start with a JSON block:
 
 ```md
 <!-- leetcode-meta
@@ -28,133 +31,125 @@ Each `note.md` must start with one JSON metadata comment:
   "title": "Two Sum",
   "difficulty": "Easy",
   "tags": ["array", "hash-table"],
-  "lists": ["example"],
+  "lists": ["hot100"],
   "status": "Todo",
   "mastery": "new",
   "last_practiced": null,
   "next_review": null,
-  "mistake_tags": []
+  "mistake_tags": [],
+  "stats": {
+    "attempts": 0,
+    "hint_level_reached": 0,
+    "solve_minutes": null,
+    "first_try_ac": null,
+    "judge_failures": [],
+    "recall_score": null,
+    "teach_back_done": false,
+    "last_mode": null
+  },
+  "links": {
+    "leetcode": "https://leetcode.com/problems/two-sum/",
+    "leetcode_cn": "https://leetcode.cn/problems/two-sum/"
+  }
 }
 -->
 ```
 
-Required fields:
-
-- `id`: LeetCode frontend ID as an integer.
-- `slug`: LeetCode URL slug.
-- `title`: display title from MCP metadata.
-- `difficulty`: LeetCode difficulty string.
-- `tags`: array of tag slugs or readable tag names.
-- `lists`: array of study list names without `.md`.
-- `status`: one of `Todo`, `Doing`, `AC`, `Review`.
-- `mastery`: one of `new`, `shaky`, `ok`, `solid`.
-- `last_practiced`: `YYYY-MM-DD` or `null`.
-- `next_review`: `YYYY-MM-DD` or `null`.
-- `mistake_tags`: array of short mistake labels.
-
-Do not store full LeetCode problem statements in `note.md`. Store the learner's own restatement, observations, mistakes, and review notes.
-
-### Archived Solutions
-
-Each initialized problem may have:
+Required keys:
 
 ```text
-problems/<bucket>/<frontend-id>-<slug>/solution.py
+id, slug, title, difficulty, tags, lists, status, mastery,
+last_practiced, next_review, mistake_tags
 ```
 
-The coach archives accepted code from the VS Code LeetCode plugin workspace after the learner reports AC. The plugin source file must contain `@lc code=start` and `@lc code=end` markers for automatic extraction.
-
-### Study Lists
-
-Study lists live in:
+Recommended keys:
 
 ```text
-lists/<list-name>.md
+stats, links
 ```
 
-The helper parses LeetCode slugs from backticks. Use one backticked slug per bullet:
+Allowed `status` values:
+
+```text
+Todo, Doing, AC, Review
+```
+
+Allowed `mastery` values:
+
+```text
+new, shaky, ok, solid
+```
+
+`mastery=solid` requires `stats.teach_back_done=true`, unless the user explicitly overrides this for a special reason.
+
+## Problem Note Sections
+
+Each problem note should include:
 
 ```md
-# Hash Table Practice
-
-- `two-sum`
-- `group-anagrams`
+## Restatement
+## Key Observations
+## Approach
+## Complexity
+## Teach Back
+## Mistakes
+## Pattern
+## Review Log
 ```
 
-List files are views. They do not store progress. Progress remains in each problem's `note.md` metadata.
+`Teach Back` is the interview-readiness check. It should cover invariant, state/data-structure choice, complexity, edge cases, and when the pattern does not apply.
 
-### Profile
+## List Files
 
-`study/profile.json` is the coach's compact preference and routing config.
+List files such as `lists/hot100.md` are views. Slugs are parsed from backticks:
 
-Expected keys:
-
-- `language`: default solution language, usually `python3`.
-- `communication_language`: default coaching language, usually `zh-CN`.
-- `active_list`: list name under `lists/` without `.md`.
-- `daily_target.new_problems`: target number of new problems per session.
-- `daily_target.review_problems`: target number of review problems per session.
-- `hint_policy`: expected coach hint style, usually `progressive`.
-- `review_intervals_days`: default spaced repetition intervals.
-
-Keep this JSON small. Do not store per-problem progress here.
-
-### Templates
-
-Templates live under `templates/` and are used by the bundled helper.
-
-- `problem-note.md` must keep a valid `leetcode-meta` JSON comment; the helper replaces it when initializing a problem.
-- `problem-note.md` should keep a `# Problem Title` heading and `https://leetcode.com/problems/` placeholder so the helper can render title and link.
-- `session.md` must keep the literal `YYYY-MM-DD` placeholder so the helper can render a dated session file.
-- `solution.py` is only the initial archived-solution placeholder. VS Code LeetCode plugin files are the submit workspace.
-
-## Flexible Conventions
-
-### Goals
-
-`study/goals.md` is user-owned planning text. The coach may read it to understand long-term goals, current focus, constraints, or preferences. Do not require a strict schema.
-
-### Sessions
-
-Daily logs live in:
-
-```text
-study/sessions/YYYY-MM-DD.md
+```md
+- `two-sum` — Two Sum
 ```
 
-The coach may append concise `Log Entry` blocks during a study session. At session end, the helper should rewrite the file into structured sections:
+Do not store progress in list files. Store progress only in problem metadata.
 
-- `Goal`
-- `Progress Snapshot`
-- `Problems`
-- `Takeaways`
-- `Next Session`
-- `Raw Log`
+## Profile
 
-The `Raw Log` section must preserve incremental `Log Entry` content so no learning history is lost.
+`study/profile.json` may contain:
 
-### Pattern Notes
-
-Reusable pattern notes live in:
-
-```text
-knowledge/patterns/<pattern-name>.md
+```json
+{
+  "language": "python3",
+  "communication_language": "zh-CN",
+  "active_list": "hot100",
+  "daily_target": {"review": 2, "new": 2},
+  "hint_policy": "progressive",
+  "review_intervals_days": [1, 7, 30],
+  "leetcode_endpoint": "leetcode-cn",
+  "problem_url_template": "https://leetcode.cn/problems/{slug}/",
+  "training_modes": ["blind-solve", "guided-solve", "redo-from-memory", "debug-drill", "pattern-contrast"],
+  "solid_requires_teach_back": true
+}
 ```
 
-Recommended sections:
+Keep personal settings in `study/profile.json`. A public template should provide `study/profile.example.json` instead of overwriting a user's existing profile.
 
-- `When To Use`
-- `Core Idea`
-- `Template`
-- `Common Mistakes`
-- `Problems`
+## Solution Archiving
 
-Pattern notes are human learning assets. They should be clear and reusable, but they are not strict machine state.
+Archived solution modes:
 
-## Agent Rules
+- `leetcode`: keep the plugin-style code snippet as-is.
+- `standalone`: extract code between `@lc code=start/end` and add obvious missing imports such as `typing.List`.
 
-- Prefer the bundled helper for state queries and updates.
-- Read this contract before creating or modifying repository assets, fixing validation errors, changing templates, or explaining asset formats.
-- Keep strict machine-readable data small and predictable.
-- Keep human-owned notes concise, personal, and useful.
-- Never commit cookies, session tokens, CSRF tokens, or copied full LeetCode statements.
+Prefer standalone mode for review and local tests.
+
+## Mistake Tags
+
+Use standardized mistake tags from `knowledge/mistake-taxonomy.md`. The helper can summarize recent mistakes and use repeated mistakes to shorten review intervals.
+
+## Validation
+
+Run:
+
+```bash
+python3 .codex/skills/leetcode-coach/scripts/study.py check
+python3 .codex/skills/leetcode-coach/scripts/study.py check --strict
+```
+
+Strict mode enforces the new evidence-based schema more aggressively.
